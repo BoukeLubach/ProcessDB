@@ -1,0 +1,56 @@
+
+
+version: "3.8"
+
+services:
+
+    PostgreSQL:
+        image: postgres
+        container_name: processdb-database
+        ports:
+        - "5432:5432"
+        volumes:
+        - pgdb_dev:/var/lib/postgresql/data/
+        environment:
+        - POSTGRES_PASSWORD=password
+        - POSTGRES_USER=postgres
+        - POSTGRES_DB=postgres
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        networks:
+            - processdb-network
+
+
+    processdb-api:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: processdb-api
+        image: 'processdb.jar'
+        ports:
+        - "8080:8080"
+        depends_on:
+            PostgreSQL:
+                condition: service_healthy
+        environment:
+        - SPRING_DATASOURCE_URL=jdbc:postgresql://PostgreSQL:5432/postgres
+        - SPRING_DATASOURCE_USERNAME=postgres
+        - SPRING_DATASOURCE_PASSWORD=password
+        - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+
+        restart: always
+        networks:
+            - processdb-network
+        volumes:
+            - ./java-backend:/usr/src/app
+
+volumes:
+    pgdb_dev:
+
+networks:
+  processdb-network:
+    name: processdb-network
+    driver: bridge
